@@ -1,0 +1,12 @@
+{
+	"name": "sqlited",
+	"authors": [
+		"Oleg A. Khlybov <fougas@mail.ru>"
+	],
+	"description": "D wrapper around the SQLite database.",
+	"copyright": "Copyright © 2018, Oleg A. Khlybov",
+	"license": "BSD",
+        "libs": [
+                "sqlite3"
+        ]
+}
