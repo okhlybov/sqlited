@@ -1,6 +1,7 @@
 module sqlited;
 
 
+import std.stdio;
 import std.string;
 import std.variant;
 import std.typecons;
@@ -29,15 +30,35 @@ class Database {
         sqlite3_close_v2(state);
     }
 
-    Result query(string sql) {
+    private void bind(T...)(sqlite3_stmt* stmt, T args) {
+        int code, i = 1;
+        static foreach(x; args) {
+            static if(is(typeof(x): int) || is(typeof(x): bool)) {
+                code = sqlite3_bind_int(stmt, i++, x);
+            } else static if(is(typeof(x) : long)) {
+                code = sqlite3_bind_int64(stmt, i++, x);
+            } else static if(is(typeof(x) : float) || is(typeof(x) : double)) {
+                code = sqlite3_bind_double(stmt, i++, x);
+            } else static if(is(typeof(x) : string)) {
+                code = sqlite3_bind_text(stmt, i++, toStringz(x), -1, SQLITE_TRANSIENT);
+            } else static if(typeid(x) == typeid(null)) {
+                code = sqlite3_bind_null(stmt, i++);
+            } else {
+                static assert(0);
+            }
+        }
+    }
+
+    Result query(T...)(string sql, T args) {
         sqlite3_stmt* stmt;
         const char* tail = null;
         auto code = sqlite3_prepare_v2(state, toStringz(sql), -1, &stmt, &tail);
         if(code != SQLITE_OK) fail(code);
+        bind(stmt, args);
         return Result(stmt);
     }
 
-    void statement(string sql) {
+    void exec(T...)(string sql, T args) {
         auto code = sqlite3_exec(state, toStringz(sql), null, null, null);
         if(code != SQLITE_OK) fail(code);
     }
@@ -91,9 +112,7 @@ alias Algebraic!(typeof(null), long, double, string, BLOB) Column;
 
 struct Row {
 
-    private {
-        sqlite3_stmt* stmt;
-    }
+    private sqlite3_stmt* stmt;
 
     package this(sqlite3_stmt* stmt) {
         this.stmt = stmt;
